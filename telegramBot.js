@@ -49,6 +49,12 @@ bot.on('message', async (msg) => {
       }
     });
 
+    const choices = response?.data?.choices;
+
+    if (!choices || !Array.isArray(choices) || !choices[0]) {
+      console.error('❌ Unexpected DeepSeek API response:', response.data);
+      return bot.sendMessage(chatId, '❌ Error handling message: DeepSeek returned an invalid or empty response.');
+    }
     const reply = response.data.choices[0].message.content;
 
     session.conversation.push({ role: 'assistant', content: reply });
