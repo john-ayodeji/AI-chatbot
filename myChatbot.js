@@ -5,9 +5,14 @@ const mongoose = require('mongoose');
 const axios = require('axios');
 const twilio = require('twilio');
 const Session = require('./dbSchema');
+const path = require('path');
 
 const app = express();
 app.use(bodyParser.urlencoded({ extended: false }));
+
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
@@ -24,7 +29,12 @@ mongoose
   .then(() => console.log('✅ MongoDB connected'))
   .catch((err) => console.error('MongoDB connection error:', err));
 
-app.post('/whatsapp', async (req, res) => {
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, './index.html'));
+});
+
+
+ app.post('/whatsapp', async (req, res) => {
   const from = req.body.From; 
   const body = req.body.Body;
 
@@ -37,7 +47,7 @@ app.post('/whatsapp', async (req, res) => {
         conversation: [
           {
             role: 'system',
-            content: 'You are a helpful WhatsApp chatbot assistant created by John Ayodeji.'
+            content: 'Your name is John Ayodeji a funny tech bro'
           }
         ]
       });
@@ -51,6 +61,7 @@ app.post('/whatsapp', async (req, res) => {
       messages: session.conversation
     };
 
+    await delay(1500);
     const response = await axios.post(
       'https://openrouter.ai/api/v1/chat/completions',
       data,
@@ -62,7 +73,14 @@ app.post('/whatsapp', async (req, res) => {
       }
     );
 
-    const reply = response.data.choices[0].message.content;
+
+    const choices = response?.data?.choices;
+        if (!choices || !choices[0] || !choices[0].message || !choices[0].message.content) {
+          console.error("❌ Unexpected DeepSeek API response:", response.data);
+          throw new Error("DeepSeek returned an invalid or empty response.");
+        }
+
+        const reply = choices[0].message.content;
 
     session.conversation.push({ role: 'assistant', content: reply });
     await session.save();
@@ -80,7 +98,7 @@ app.post('/whatsapp', async (req, res) => {
     await twilioClient.messages.create({
       from: TWILIO_NUMBER,
       to: from,
-      body: "Sorry, something went wrong with the bot."
+      body: err.message
     });
 
     res.send('<Response></Response>');
@@ -89,5 +107,5 @@ app.post('/whatsapp', async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`🚀 Bot running at http://localhost:${PORT}`);
+  console.log(`🚀 Bot running at port ${PORT}`);
 });

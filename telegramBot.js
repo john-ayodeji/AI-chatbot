@@ -4,6 +4,10 @@ const axios = require('axios');
 const mongoose = require('mongoose');
 const Session = require('./dbSchema'); 
 
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
 
@@ -17,13 +21,15 @@ bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
   const userMessage = msg.text;
 
+
+
   try {
     let session = await Session.findOne({ phone: chatId.toString() });
     if (!session) {
       session = await Session.create({
         phone: chatId.toString(),
         conversation: [
-          { role: 'system', content: 'You are a helpful Telegram chatbot created by John Ayodeji.' }
+          { role: 'system', content: 'Your name is John Ayodeji a funny tech bro'}
         ]
       });
     }
@@ -35,6 +41,7 @@ bot.on('message', async (msg) => {
       messages: session.conversation
     };
 
+    await delay(1500);
     const response = await axios.post('https://openrouter.ai/api/v1/chat/completions', data, {
       headers: {
         'Content-Type': 'application/json',
@@ -50,6 +57,6 @@ bot.on('message', async (msg) => {
     bot.sendMessage(chatId, reply);
   } catch (err) {
     console.error('❌ Error:', err.message);
-    bot.sendMessage(chatId, 'Something went wrong. Try again later.');
+    bot.sendMessage(chatId, err.message);
   }
 });
